@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Osciloscopio Híbrido | Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-hover: #2563eb;
+            --ch1-color: #00ffcc;
+            --ch2-color: #ff00ff;
+        }
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0 10px 0;
+            width: 100%;
+            border-bottom: 1px solid #334155;
+            background-color: var(--panel-bg);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 26px;
+            letter-spacing: 1px;
+        }
+        .header p {
+            margin: 5px 0 0 0;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+        .dashboard-container {
+            display: flex;
+            flex-direction: column;
+            width: 95%;
+            max-width: 1200px;
+            margin-top: 20px;
+            gap: 20px;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            background-color: var(--panel-bg);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        button {
+            background-color: var(--accent-blue);
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        button:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-2px);
+        }
+        button.active {
+            box-shadow: 0 0 12px var(--accent-blue);
+            border: 2px solid #fff;
+        }
+        .chart-container {
+            background-color: var(--panel-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            position: relative;
+            height: 65vh;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 12px;
+            font-size: 13px;
+            color: var(--text-main);
+        }
+        .led {
+            width: 10px;
+            height: 10px;
+            background-color: #22c55e;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #22c55e;
+            animation: blink 1s infinite alternate;
+        }
+        @keyframes blink {
+            from { opacity: 0.4; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Osciloscopio Híbrido</h1>
+        <p>Adquisición de Datos - Ventanas de 64 Muestras</p>
+        <div class="status">
+            <div class="led"></div> <span>Recibiendo datos a 1 Hz</span>
+        </div>
+    </div>
+    
+    <div class="dashboard-container">
+        <div class="controls">
+            <button id="btn1" onclick="enviarComando('1', this)" class="active">100 Sa/s</button>
+            <button id="btn2" onclick="enviarComando('2', this)">1.000 Sa/s</button>
+            <button id="btn3" onclick="enviarComando('3', this)">10.000 Sa/s</button>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="osciloscopioChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('osciloscopioChart').getContext('2d');
+        const etiquetas = Array.from({length: 64}, (_, i) => i + 1);
+
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: etiquetas,
+                datasets: [
+                    { 
+                        label: 'Canal 1 (Pin 4)', 
+                        borderColor: '#00ffcc', 
+                        backgroundColor: 'rgba(0, 255, 204, 0.05)',
+                        borderWidth: 2,
+                        data: [], 
+                        fill: true, 
+                        tension: 0.3, 
+                        pointRadius: 0 
+                    },
+                    { 
+                        label: 'Canal 2 (Pin 5)', 
+                        borderColor: '#ff00ff', 
+                        backgroundColor: 'rgba(255, 0, 255, 0.05)',
+                        borderWidth: 2,
+                        data: [], 
+                        fill: true, 
+                        tension: 0.3, 
+                        pointRadius: 0 
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false, 
+                layout: { padding: 10 },
+                plugins: {
+                    legend: { labels: { color: '#f8fafc', font: { size: 14, family: 'Segoe UI' } } }
+                },
+                scales: {
+                    x: { 
+                        grid: { color: '#334155' }, 
+                        ticks: { color: '#94a3b8' },
+                        title: { display: true, text: 'Muestras', color: '#94a3b8' }
+                    },
+                    y: { 
+                        min: 0, 
+                        max: 4095, 
+                        grid: { color: '#334155' }, 
+                        ticks: { color: '#94a3b8' },
+                        title: { display: true, text: 'Amplitud (ADC 12-bit)', color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+
+        // Actualización de datos
+        setInterval(() => {
+            fetch('/api/data')
+                .then(response => response.json())
+                .then(data => {
+                    chart.data.datasets[0].data = data.canal1;
+                    chart.data.datasets[1].data = data.canal2;
+                    chart.update();
+                })
+                .catch(err => console.error("Error de conexión:", err));
+        }, 1000); 
+
+        // Manejo de comandos UI
+        function enviarComando(cmd, btnElement) {
+            document.querySelectorAll('.controls button').forEach(btn => btn.classList.remove('active'));
+            btnElement.classList.add('active');
+
+            fetch('/api/command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cmd: cmd })
+            }).catch(err => console.error("Error enviando comando:", err));
+        }
+    </script>
+</body>
+</html>
